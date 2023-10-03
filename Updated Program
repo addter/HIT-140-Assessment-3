@@ -1,0 +1,421 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[2]:
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Load the Data
+po2_data = pd.read_csv('po2_data.csv')  # Adjust the path
+
+# Basic Data Exploration
+print(po2_data.head())
+print(po2_data.describe())
+print(po2_data.info())
+
+# Univariate Analysis
+sns.histplot(po2_data['motor_updrs'], kde=True, bins=30)
+plt.title('Distribution of motor_updrs')
+plt.show()
+
+sns.histplot(po2_data['total_updrs'], kde=True, bins=30)
+plt.title('Distribution of total_updrs')
+plt.show()
+
+# Bivariate Analysis
+sns.scatterplot(x='age', y='motor_updrs', data=po2_data, alpha=0.6)
+plt.title('Motor UPDRS vs Age')
+plt.show()
+
+sns.boxplot(x='sex', y='motor_updrs', data=po2_data)
+plt.xticks(ticks=[0, 1], labels=['Male', 'Female'])
+plt.title('Motor UPDRS vs Sex')
+plt.show()
+
+# Set up the matplotlib figure
+plt.figure(figsize=(15, 12))
+
+# Selected voice measurement variables
+selected_voice_vars = ['jitter(%)', 'shimmer(%)', 'nhr', 'hnr', 'ppe']
+titles = ['Jitter (%)', 'Shimmer (%)', 'Noise-to-Harmonic Ratio (NHR)', 'Harmonic-to-Noise Ratio (HNR)', 'Pitch Period Entropy (PPE)']
+
+# Bivariate plots for selected voice variables and motor_updrs
+for i, variable in enumerate(selected_voice_vars, 1):
+    plt.subplot(2, 5, i)
+    sns.scatterplot(x=variable, y='motor_updrs', data=po2_data, alpha=0.6)
+    plt.title(f'Motor UPDRS vs {titles[i-1]}')
+    
+# Bivariate plots for selected voice variables and total_updrs
+for i, variable in enumerate(selected_voice_vars, 1):
+    plt.subplot(2, 5, i+5)
+    sns.scatterplot(x=variable, y='total_updrs', data=po2_data, alpha=0.6)
+    plt.title(f'Total UPDRS vs {titles[i-1]}')
+
+plt.tight_layout()
+plt.show()
+
+
+# Example of analyzing relationship with a voice measurement variable
+sns.scatterplot(x='ppe', y='motor_updrs', data=po2_data, alpha=0.6)
+plt.title('Motor UPDRS vs Pitch Period Entropy')
+plt.show()
+
+# Correlation Analysis
+correlation_matrix = po2_data.corr()
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".1f")
+plt.title('Correlation Matrix')
+plt.show()
+
+# Linear Regression Model Building
+features = po2_data.drop(columns=['subject#', 'motor_updrs', 'total_updrs'])
+targets = po2_data[['motor_updrs', 'total_updrs']]
+
+# Example: Using 60-40 split
+X_train, X_test, y_train, y_test = train_test_split(features, targets, test_size=0.4, random_state=42)
+
+models = {}
+for target in ['motor_updrs', 'total_updrs']:
+    # Model Training
+    model = LinearRegression().fit(X_train, y_train[target])
+    models[target] = model
+    
+    # Predictions
+    predictions = model.predict(X_test)
+    
+    # Model Evaluation
+    mae = mean_absolute_error(y_test[target], predictions)
+    mse = mean_squared_error(y_test[target], predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test[target], predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test[target])-1)/(len(y_test[target])-X_test.shape[1]-1)
+    
+    print(f"Metrics for predicting {target}:")
+    print(f"MAE: {mae}, MSE: {mse}, RMSE: {rmse}, R^2: {r2}, Adjusted R^2: {adjusted_r2}")
+
+
+# In[3]:
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Load the Data
+po2_data = pd.read_csv('po2_data.csv')  # Adjust the path
+
+# Features and Targets
+features = po2_data.drop(columns=['subject#', 'motor_updrs', 'total_updrs'])
+targets = po2_data[['motor_updrs', 'total_updrs']]
+
+# 60-40 Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(features, targets, test_size=0.4, random_state=42)
+
+# Model Building and Evaluation
+models = {}
+metrics = {}
+
+for target in ['motor_updrs', 'total_updrs']:
+    # Model Training
+    model = LinearRegression().fit(X_train, y_train[target])
+    models[target] = model
+    
+    # Predictions
+    predictions = model.predict(X_test)
+    
+    # Model Evaluation
+    mae = mean_absolute_error(y_test[target], predictions)
+    mse = mean_squared_error(y_test[target], predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test[target], predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test[target])-1)/(len(y_test[target])-X_test.shape[1]-1)
+    
+    # Store Metrics
+    metrics[target] = {
+        'MAE': mae,
+        'MSE': mse,
+        'RMSE': rmse,
+        'R2': r2,
+        'Adjusted R2': adjusted_r2
+    }
+
+metrics_df = pd.DataFrame(metrics).T
+metrics_df
+
+
+# In[4]:
+
+
+# Define various train-test split scenarios
+splits = [(0.5, 0.5), (0.6, 0.4), (0.7, 0.3), (0.8, 0.2)]
+
+# Initialize a DataFrame to store the metrics for various splits
+split_metrics = {'Split': [], 'Target': [], 'MAE': [], 'MSE': [], 'RMSE': [], 'R2': [], 'Adjusted R2': []}
+
+# Evaluate models for each target variable and split ratio
+for target in ['motor_updrs', 'total_updrs']:
+    for train_size, test_size in splits:
+        # Splitting the data
+        X_train, X_test, y_train, y_test = train_test_split(features, targets[target], test_size=test_size, random_state=42)
+        
+        # Model Building and Prediction
+        model = LinearRegression().fit(X_train, y_train)
+        predictions = model.predict(X_test)
+        
+        # Model Evaluation
+        mae = mean_absolute_error(y_test, predictions)
+        mse = mean_squared_error(y_test, predictions)
+        rmse = np.sqrt(mse)
+        r2 = r2_score(y_test, predictions)
+        adjusted_r2 = 1 - (1-r2)*(len(y_test)-1)/(len(y_test)-X_test.shape[1]-1)
+        
+        # Storing Metrics
+        split_metrics['Split'].append(f'Train {int(train_size*100)}% : Test {int(test_size*100)}%')
+        split_metrics['Target'].append(target)
+        split_metrics['MAE'].append(mae)
+        split_metrics['MSE'].append(mse)
+        split_metrics['RMSE'].append(rmse)
+        split_metrics['R2'].append(r2)
+        split_metrics['Adjusted R2'].append(adjusted_r2)
+
+# Convert to DataFrame for better visualization
+split_metrics_df = pd.DataFrame(split_metrics)
+split_metrics_df
+
+
+# In[6]:
+
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Load the data
+po2_data = pd.read_csv('po2_data.csv')
+
+# Log-transform selected variables
+selected_voice_vars = ['jitter(%)', 'shimmer(%)', 'nhr', 'hnr', 'ppe']
+log_transformed_vars = po2_data[selected_voice_vars].apply(np.log1p)
+
+# Features and Targets definition
+features = po2_data.drop(columns=['subject#', 'motor_updrs', 'total_updrs'])
+targets = po2_data[['motor_updrs', 'total_updrs']]
+
+# Update features with log-transformed voice variables
+features_log_transformed = features.copy()
+features_log_transformed[selected_voice_vars] = log_transformed_vars
+
+# Re-evaluate Collinearity: Correlation matrix with log-transformed variables
+correlation_matrix_log_transformed = features_log_transformed.corr()
+plt.figure(figsize=(12, 10))
+sns.heatmap(correlation_matrix_log_transformed, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+plt.title('Correlation Matrix (Log-Transformed Variables)')
+plt.show()
+
+# Identify pairs of variables with high correlation (above 0.7 or below -0.7) in the log-transformed data
+high_corr_pairs_log_transformed = []
+for i in range(correlation_matrix_log_transformed.shape[0]):
+    for j in range(i+1, correlation_matrix_log_transformed.shape[1]):
+        if abs(correlation_matrix_log_transformed.iloc[i, j]) > 0.7:
+            high_corr_pairs_log_transformed.append((correlation_matrix_log_transformed.columns[i], correlation_matrix_log_transformed.columns[j], correlation_matrix_log_transformed.iloc[i, j]))
+
+# Model Rebuilding and Evaluation using Log-Transformed Variables
+# (Using 60-40 split for comparison with initial models)
+X_train, X_test, y_train, y_test = train_test_split(features_log_transformed, targets, test_size=0.4, random_state=42)
+
+# Initialize a DataFrame to store the metrics
+log_transformed_metrics = {'Target': [], 'MAE': [], 'MSE': [], 'RMSE': [], 'R2': [], 'Adjusted R2': []}
+
+# Evaluate models for each target variable
+for target in ['motor_updrs', 'total_updrs']:
+    # Model Training
+    model = LinearRegression().fit(X_train, y_train[target])
+    
+    # Predictions
+    predictions = model.predict(X_test)
+    
+    # Model Evaluation
+    mae = mean_absolute_error(y_test[target], predictions)
+    mse = mean_squared_error(y_test[target], predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test[target], predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test[target])-1)/(len(y_test[target])-X_test.shape[1]-1)
+    
+    # Store Metrics
+    log_transformed_metrics['Target'].append(target)
+    log_transformed_metrics['MAE'].append(mae)
+    log_transformed_metrics['MSE'].append(mse)
+    log_transformed_metrics['RMSE'].append(rmse)
+    log_transformed_metrics['R2'].append(r2)
+    log_transformed_metrics['Adjusted R2'].append(adjusted_r2)
+
+# Convert to DataFrame for better visualization
+log_transformed_metrics_df = pd.DataFrame(log_transformed_metrics)
+log_transformed_metrics_df, high_corr_pairs_log_transformed
+
+
+# Replace original variables with log-transformed variables
+features_log_transformed = features.copy()
+features_log_transformed[selected_voice_vars] = log_transformed_vars
+
+# Model Building & Evaluation function
+def evaluate_model(X_train, X_test, y_train, y_test, target):
+    model = LinearRegression().fit(X_train, y_train)
+    predictions = model.predict(X_test)
+    mae = mean_absolute_error(y_test, predictions)
+    mse = mean_squared_error(y_test, predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test)-1)/(len(y_test)-X_test.shape[1]-1)
+    return {'Target': target, 'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'R2': r2, 'Adjusted R2': adjusted_r2}
+
+# Model Rebuilding and Evaluation using Log-Transformed Variables
+X_train, X_test, y_train, y_test = train_test_split(features_log_transformed, targets, test_size=0.4, random_state=42)
+metrics = []
+
+for target in ['motor_updrs', 'total_updrs']:
+    metrics.append(evaluate_model(X_train, X_test, y_train[target], y_test[target], target))
+
+# Convert to DataFrame for better visualization
+metrics_df = pd.DataFrame(metrics)
+
+# Display metrics
+print(metrics_df)
+
+
+# In[7]:
+
+
+from sklearn.preprocessing import StandardScaler
+
+# Step 1: Standardization
+# Initialize a StandardScaler
+scaler = StandardScaler()
+
+# Fit the scaler on the features (log-transformed variables) and transform them
+features_standardized = scaler.fit_transform(features_log_transformed)
+
+# Convert to DataFrame for better handling
+features_standardized_df = pd.DataFrame(features_standardized, columns=features_log_transformed.columns)
+
+# Step 2: Gaussian Transformation (Box-Cox requires positive data, thus not applicable here)
+
+# Visualizing the distributions of standardized variables to assess normality
+fig, axs = plt.subplots(5, 5, figsize=(20, 20))
+fig.tight_layout(pad=4.0)
+
+for i, var in enumerate(features_standardized_df.columns):
+    sns.histplot(features_standardized_df[var], kde=True, ax=axs[i//5, i%5])
+    axs[i//5, i%5].set_title(f'Distribution of {var}')
+
+plt.show()
+
+
+# In[8]:
+
+
+# Step 3: Model Rebuilding using Standardized Variables
+# Splitting the standardized data into training and test sets (60-40 split for comparison)
+X_train_std, X_test_std, y_train, y_test = train_test_split(features_standardized_df, targets, test_size=0.4, random_state=42)
+
+# Initialize a DataFrame to store the metrics
+standardized_metrics = {'Target': [], 'MAE': [], 'MSE': [], 'RMSE': [], 'R2': [], 'Adjusted R2': []}
+
+# Evaluate models for each target variable
+for target in ['motor_updrs', 'total_updrs']:
+    # Model Training
+    model = LinearRegression().fit(X_train_std, y_train[target])
+    
+    # Predictions
+    predictions = model.predict(X_test_std)
+    
+    # Model Evaluation
+    mae = mean_absolute_error(y_test[target], predictions)
+    mse = mean_squared_error(y_test[target], predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test[target], predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test[target])-1)/(len(y_test[target])-X_test_std.shape[1]-1)
+    
+    # Store Metrics
+    standardized_metrics['Target'].append(target)
+    standardized_metrics['MAE'].append(mae)
+    standardized_metrics['MSE'].append(mse)
+    standardized_metrics['RMSE'].append(rmse)
+    standardized_metrics['R2'].append(r2)
+    standardized_metrics['Adjusted R2'].append(adjusted_r2)
+
+# Convert to DataFrame for better visualization
+standardized_metrics_df = pd.DataFrame(standardized_metrics)
+standardized_metrics_df
+
+
+# In[9]:
+
+
+# Step 1: Creating Interaction Terms
+# Creating interaction terms between selected voice variables
+interaction_terms = pd.DataFrame()
+
+# Selecting a subset of voice variables for interaction terms to manage complexity
+selected_for_interaction = ['jitter(%)', 'shimmer(%)', 'nhr', 'hnr', 'ppe']
+
+# Creating interaction terms by multiplying selected variables
+for i in range(len(selected_for_interaction)):
+    for j in range(i+1, len(selected_for_interaction)):
+        interaction_terms[f'{selected_for_interaction[i]}_x_{selected_for_interaction[j]}'] = po2_data[selected_for_interaction[i]] * po2_data[selected_for_interaction[j]]
+
+# Adding interaction terms to the feature set (with log-transformed variables)
+features_with_interaction = pd.concat([features_log_transformed, interaction_terms], axis=1)
+
+# Standardizing the features with interaction terms
+scaler_interaction = StandardScaler()
+features_with_interaction_std = scaler_interaction.fit_transform(features_with_interaction)
+
+# Splitting the data with interaction terms into training and test sets (60-40 split for comparison)
+X_train_int, X_test_int, y_train, y_test = train_test_split(features_with_interaction_std, targets, test_size=0.4, random_state=42)
+
+# Rebuilding models using the features with interaction terms and evaluating their performance
+interaction_metrics = {'Target': [], 'MAE': [], 'MSE': [], 'RMSE': [], 'R2': [], 'Adjusted R2': []}
+
+for target in ['motor_updrs', 'total_updrs']:
+    # Model Training
+    model = LinearRegression().fit(X_train_int, y_train[target])
+    
+    # Predictions
+    predictions = model.predict(X_test_int)
+    
+    # Model Evaluation
+    mae = mean_absolute_error(y_test[target], predictions)
+    mse = mean_squared_error(y_test[target], predictions)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test[target], predictions)
+    adjusted_r2 = 1 - (1-r2)*(len(y_test[target])-1)/(len(y_test[target])-X_test_int.shape[1]-1)
+    
+    # Store Metrics
+    interaction_metrics['Target'].append(target)
+    interaction_metrics['MAE'].append(mae)
+    interaction_metrics['MSE'].append(mse)
+    interaction_metrics['RMSE'].append(rmse)
+    interaction_metrics['R2'].append(r2)
+    interaction_metrics['Adjusted R2'].append(adjusted_r2)
+
+# Convert to DataFrame for better visualization
+interaction_metrics_df = pd.DataFrame(interaction_metrics)
+interaction_metrics_df
+
+
+# In[ ]:
+
+
+
+
